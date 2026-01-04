@@ -18,14 +18,18 @@ interface SidebarProps {
   onTabChange: (tab: string) => void;
 }
 
+import { HelpCircle, Layers } from "lucide-react";
+
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "departments", label: "Departments", icon: Layers },
   { id: "teachers", label: "Teachers", icon: Users },
   { id: "students", label: "Students", icon: GraduationCap },
   { id: "classrooms", label: "Classrooms", icon: Building2 },
   { id: "timeslots", label: "Time Slots", icon: Clock },
-  { id: "timetable", label: "Timetable Generator", icon: Calendar },
+  { id: "timetable", label: "Timetable", icon: Calendar },
   { id: "attendance", label: "Attendance", icon: BarChart3 },
+  { id: "demo", label: "Demo & Help", icon: HelpCircle },
 ];
 
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {

@@ -1,4 +1,5 @@
-import { students, attendanceByClass } from "@/data/mockData";
+import { students, getAttendanceBySection } from "@/data/mockData";
+import { useDepartment } from "@/contexts/DepartmentContext";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,7 +13,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { Users, TrendingUp, TrendingDown, AlertCircle } from "lucide-react";
@@ -24,18 +24,26 @@ const COLORS = {
 };
 
 export function AttendanceModule() {
+  const { selectedDepartment, selectedSection, getCurrentDepartment } = useDepartment();
+  const currentDept = getCurrentDepartment();
+
+  const deptStudents = students.filter(s => s.departmentId === selectedDepartment);
+  const sectionStudents = deptStudents.filter(s => s.section === selectedSection);
+
   const attendanceDistribution = [
-    { name: "High (≥75%)", value: students.filter((s) => s.attendance >= 75).length, color: COLORS.high },
-    { name: "Medium (50-74%)", value: students.filter((s) => s.attendance >= 50 && s.attendance < 75).length, color: COLORS.medium },
-    { name: "Low (<50%)", value: students.filter((s) => s.attendance < 50).length, color: COLORS.low },
+    { name: "High (≥75%)", value: sectionStudents.filter((s) => s.attendance >= 75).length, color: COLORS.high },
+    { name: "Medium (50-74%)", value: sectionStudents.filter((s) => s.attendance >= 50 && s.attendance < 75).length, color: COLORS.medium },
+    { name: "Low (<50%)", value: sectionStudents.filter((s) => s.attendance < 50).length, color: COLORS.low },
   ];
 
-  const avgAttendance = Math.round(
-    students.reduce((sum, s) => sum + s.attendance, 0) / students.length
-  );
+  const avgAttendance = sectionStudents.length > 0
+    ? Math.round(sectionStudents.reduce((sum, s) => sum + s.attendance, 0) / sectionStudents.length)
+    : 0;
 
-  const lowAttendanceStudents = students.filter((s) => s.attendance < 50);
-  const highAttendanceStudents = students.filter((s) => s.attendance >= 90);
+  const lowAttendanceStudents = sectionStudents.filter((s) => s.attendance < 50);
+  const highAttendanceStudents = sectionStudents.filter((s) => s.attendance >= 90);
+
+  const attendanceBySection = getAttendanceBySection(selectedDepartment);
 
   const getAttendanceClass = (attendance: number) => {
     if (attendance >= 75) return "attendance-high";
@@ -51,6 +59,16 @@ export function AttendanceModule() {
 
   return (
     <div className="space-y-6">
+      {/* Department Info */}
+      <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
+        <h2 className="text-lg font-semibold text-foreground">
+          {currentDept?.name} - Section {selectedSection} Attendance
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Attendance analytics for {sectionStudents.length} students
+        </p>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card border border-border">
@@ -83,7 +101,7 @@ export function AttendanceModule() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">At Risk</p>
-              <p className="text-2xl font-bold text-foreground">{students.filter(s => s.attendance >= 50 && s.attendance < 75).length}</p>
+              <p className="text-2xl font-bold text-foreground">{sectionStudents.filter(s => s.attendance >= 50 && s.attendance < 75).length}</p>
               <p className="text-xs text-muted-foreground">students 50-74%</p>
             </div>
           </div>
@@ -106,33 +124,39 @@ export function AttendanceModule() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pie Chart */}
         <div className="bg-card rounded-xl border border-border shadow-card p-5">
-          <h3 className="font-semibold text-foreground mb-4">Attendance Distribution</h3>
+          <h3 className="font-semibold text-foreground mb-4">Section {selectedSection} Distribution</h3>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={attendanceDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {attendanceDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                  }}
-                  formatter={(value: number) => [`${value} students`, ""]}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {sectionStudents.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={attendanceDistribution}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {attendanceDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                    }}
+                    formatter={(value: number) => [`${value} students`, ""]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                No students in this section
+              </div>
+            )}
           </div>
           <div className="flex justify-center gap-6 mt-4">
             {attendanceDistribution.map((item) => (
@@ -147,42 +171,48 @@ export function AttendanceModule() {
           </div>
         </div>
 
-        {/* Bar Chart by Class */}
+        {/* Bar Chart by Section */}
         <div className="bg-card rounded-xl border border-border shadow-card p-5">
-          <h3 className="font-semibold text-foreground mb-4">Attendance by Class</h3>
+          <h3 className="font-semibold text-foreground mb-4">Department-wide by Section</h3>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={attendanceByClass}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis
-                  dataKey="class"
-                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  domain={[0, 100]}
-                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `${value}%`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                  }}
-                  formatter={(value: number) => [`${value}%`, "Attendance"]}
-                />
-                <Bar
-                  dataKey="attendance"
-                  fill="hsl(var(--primary))"
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={60}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            {attendanceBySection.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={attendanceBySection}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis
+                    dataKey="section"
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `${value}%`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                    }}
+                    formatter={(value: number) => [`${value}%`, "Attendance"]}
+                  />
+                  <Bar
+                    dataKey="attendance"
+                    fill="hsl(var(--primary))"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={60}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                No data available
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -190,49 +220,55 @@ export function AttendanceModule() {
       {/* Student Attendance List */}
       <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
         <div className="p-5 border-b border-border">
-          <h3 className="font-semibold text-foreground">Individual Student Attendance</h3>
-          <p className="text-sm text-muted-foreground">All students sorted by attendance</p>
+          <h3 className="font-semibold text-foreground">Section {selectedSection} Student Attendance</h3>
+          <p className="text-sm text-muted-foreground">Students sorted by attendance</p>
         </div>
-        <div className="divide-y divide-border">
-          {students
-            .sort((a, b) => a.attendance - b.attendance)
-            .map((student, index) => (
-              <div
-                key={student.id}
-                className="p-4 flex items-center gap-4 hover:bg-secondary/30 transition-colors animate-fade-in"
-                style={{ animationDelay: `${index * 20}ms` }}
-              >
-                <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-medium flex-shrink-0">
-                  {student.name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-foreground truncate">{student.name}</p>
-                    <Badge variant="secondary" className="text-xs">{student.class}</Badge>
+        <div className="divide-y divide-border max-h-[400px] overflow-y-auto">
+          {sectionStudents.length > 0 ? (
+            sectionStudents
+              .sort((a, b) => a.attendance - b.attendance)
+              .map((student, index) => (
+                <div
+                  key={student.id}
+                  className="p-4 flex items-center gap-4 hover:bg-secondary/30 transition-colors animate-fade-in"
+                  style={{ animationDelay: `${index * 20}ms` }}
+                >
+                  <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-medium flex-shrink-0">
+                    {student.name.charAt(0)}
                   </div>
-                  <div className="flex items-center gap-3 mt-2">
-                    <Progress
-                      value={student.attendance}
-                      className={cn("h-2 flex-1 max-w-48", getProgressColor(student.attendance))}
-                    />
-                    <span className={cn("text-sm font-medium", getAttendanceClass(student.attendance))}>
-                      {student.attendance}%
-                    </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground truncate">{student.name}</p>
+                      <Badge variant="secondary" className="text-xs">{student.departmentId}</Badge>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2">
+                      <Progress
+                        value={student.attendance}
+                        className={cn("h-2 flex-1 max-w-48", getProgressColor(student.attendance))}
+                      />
+                      <span className={cn("text-sm font-medium", getAttendanceClass(student.attendance))}>
+                        {student.attendance}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="hidden sm:flex gap-0.5">
+                    {student.weeklyAttendance.map((day, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "w-2 h-8 rounded-sm",
+                          day >= 80 ? "bg-success/80" : day >= 60 ? "bg-warning/80" : "bg-danger/80"
+                        )}
+                      />
+                    ))}
                   </div>
                 </div>
-                <div className="hidden sm:flex gap-0.5">
-                  {student.weeklyAttendance.map((day, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "w-2 h-8 rounded-sm",
-                        day >= 80 ? "bg-success/80" : day >= 60 ? "bg-warning/80" : "bg-danger/80"
-                      )}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+              ))
+          ) : (
+            <div className="p-8 text-center text-muted-foreground">
+              No students in this section
+            </div>
+          )}
         </div>
       </div>
     </div>
