@@ -4,9 +4,10 @@ import {
   classrooms,
   timeSlots,
   days,
-  subjects,
+  subjectsByDepartment,
   TimetableEntry,
 } from "@/data/mockData";
+import { useDepartment } from "@/contexts/DepartmentContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,17 +27,24 @@ import {
   Calendar,
   User,
   MapPin,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const classNames = ["CS-101", "EE-201", "ME-301", "CE-401"];
-
 export function TimetableGenerator() {
+  const { selectedDepartment, selectedSection, getCurrentDepartment, getSectionsForDepartment } = useDepartment();
+  const currentDept = getCurrentDepartment();
+  const sections = getSectionsForDepartment(selectedDepartment);
+
+  const deptTeachers = teachers.filter(t => t.departmentId === selectedDepartment);
+  const deptClassrooms = classrooms.filter(c => c.departmentId === selectedDepartment);
+  const deptSubjects = subjectsByDepartment[selectedDepartment] || [];
+
   const [selectedTeachers, setSelectedTeachers] = useState<string[]>([]);
   const [selectedClassrooms, setSelectedClassrooms] = useState<string[]>([]);
   const [selectedDays, setSelectedDays] = useState<string[]>(days.slice(0, 5));
-  const [selectedClass, setSelectedClass] = useState<string>("CS-101");
+  const [currentSection, setCurrentSection] = useState<string>(selectedSection);
   const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [conflicts, setConflicts] = useState<string[]>([]);
@@ -91,7 +99,7 @@ export function TimetableGenerator() {
           // Randomly assign (for demo purposes)
           if (Math.random() > 0.4) {
             const availableTeachers = selectedTeachers.filter((tId) => {
-              const teacher = teachers.find((t) => t.id === tId);
+              const teacher = deptTeachers.find((t) => t.id === tId);
               const slotKey = `${tId}-${day}-${timeSlotStr}`;
               return (
                 teacher?.availability.includes(day) && !usedSlots.has(slotKey)
@@ -113,8 +121,8 @@ export function TimetableGenerator() {
                   Math.floor(Math.random() * availableClassrooms.length)
                 ];
 
-              const teacher = teachers.find((t) => t.id === teacherId)!;
-              const classroom = classrooms.find((c) => c.id === classroomId)!;
+              const teacher = deptTeachers.find((t) => t.id === teacherId)!;
+              const classroom = deptClassrooms.find((c) => c.id === classroomId)!;
 
               usedSlots.add(`${teacherId}-${day}-${timeSlotStr}`);
               usedSlots.add(`${classroomId}-${day}-${timeSlotStr}`);
@@ -128,7 +136,8 @@ export function TimetableGenerator() {
                 teacherName: teacher.name,
                 classroomId,
                 classroomName: classroom.name,
-                className: selectedClass,
+                departmentId: selectedDepartment,
+                section: currentSection,
               });
             } else if (
               availableTeachers.length === 0 &&
@@ -145,7 +154,7 @@ export function TimetableGenerator() {
       setTimetable(newTimetable);
       setConflicts(newConflicts);
       setIsGenerating(false);
-      toast.success(`Generated ${newTimetable.length} classes!`);
+      toast.success(`Generated ${newTimetable.length} classes for ${currentDept?.code} Section ${currentSection}!`);
     }, 1500);
   };
 
@@ -164,38 +173,58 @@ export function TimetableGenerator() {
     return grid;
   }, [timetable, selectedDays, activeTimeSlots]);
 
+  const exportTimetable = () => {
+    toast.success("Timetable export feature - Coming soon!");
+  };
+
   return (
     <div className="space-y-6">
+      {/* Department Info */}
+      <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
+        <h2 className="text-lg font-semibold text-foreground">
+          {currentDept?.name} - Timetable Generator
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Generate smart schedules for department sections
+        </p>
+      </div>
+
       {/* Configuration Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Teachers Selection */}
         <div className="bg-card rounded-xl border border-border shadow-card p-5">
           <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
             <User className="w-4 h-4 text-primary" />
-            Select Teachers
+            Department Teachers
           </h3>
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {teachers.map((teacher) => (
-              <div
-                key={teacher.id}
-                className={cn(
-                  "flex items-center gap-3 p-2 rounded-lg transition-colors cursor-pointer",
-                  selectedTeachers.includes(teacher.id)
-                    ? "bg-primary/10 border border-primary/30"
-                    : "hover:bg-secondary"
-                )}
-                onClick={() => toggleTeacher(teacher.id)}
-              >
-                <Checkbox
-                  checked={selectedTeachers.includes(teacher.id)}
-                  onCheckedChange={() => toggleTeacher(teacher.id)}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{teacher.name}</p>
-                  <p className="text-xs text-muted-foreground">{teacher.subject}</p>
+            {deptTeachers.length > 0 ? (
+              deptTeachers.map((teacher) => (
+                <div
+                  key={teacher.id}
+                  className={cn(
+                    "flex items-center gap-3 p-2 rounded-lg transition-colors cursor-pointer",
+                    selectedTeachers.includes(teacher.id)
+                      ? "bg-primary/10 border border-primary/30"
+                      : "hover:bg-secondary"
+                  )}
+                  onClick={() => toggleTeacher(teacher.id)}
+                >
+                  <Checkbox
+                    checked={selectedTeachers.includes(teacher.id)}
+                    onCheckedChange={() => toggleTeacher(teacher.id)}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{teacher.name}</p>
+                    <p className="text-xs text-muted-foreground">{teacher.subject}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No teachers in this department
+              </p>
+            )}
           </div>
         </div>
 
@@ -203,52 +232,58 @@ export function TimetableGenerator() {
         <div className="bg-card rounded-xl border border-border shadow-card p-5">
           <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
             <MapPin className="w-4 h-4 text-accent" />
-            Select Classrooms
+            Department Classrooms
           </h3>
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {classrooms.map((classroom) => (
-              <div
-                key={classroom.id}
-                className={cn(
-                  "flex items-center gap-3 p-2 rounded-lg transition-colors cursor-pointer",
-                  selectedClassrooms.includes(classroom.id)
-                    ? "bg-accent/10 border border-accent/30"
-                    : "hover:bg-secondary"
-                )}
-                onClick={() => toggleClassroom(classroom.id)}
-              >
-                <Checkbox
-                  checked={selectedClassrooms.includes(classroom.id)}
-                  onCheckedChange={() => toggleClassroom(classroom.id)}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{classroom.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Capacity: {classroom.capacity}
-                  </p>
+            {deptClassrooms.length > 0 ? (
+              deptClassrooms.map((classroom) => (
+                <div
+                  key={classroom.id}
+                  className={cn(
+                    "flex items-center gap-3 p-2 rounded-lg transition-colors cursor-pointer",
+                    selectedClassrooms.includes(classroom.id)
+                      ? "bg-accent/10 border border-accent/30"
+                      : "hover:bg-secondary"
+                  )}
+                  onClick={() => toggleClassroom(classroom.id)}
+                >
+                  <Checkbox
+                    checked={selectedClassrooms.includes(classroom.id)}
+                    onCheckedChange={() => toggleClassroom(classroom.id)}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{classroom.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Capacity: {classroom.capacity}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No classrooms in this department
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Days & Class Selection */}
+        {/* Days & Section Selection */}
         <div className="bg-card rounded-xl border border-border shadow-card p-5">
           <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
             <Calendar className="w-4 h-4 text-success" />
-            Days & Class
+            Section & Days
           </h3>
           <div className="space-y-4">
             <div>
-              <Label className="text-sm text-muted-foreground">Select Class</Label>
-              <Select value={selectedClass} onValueChange={setSelectedClass}>
+              <Label className="text-sm text-muted-foreground">Target Section</Label>
+              <Select value={currentSection} onValueChange={setCurrentSection}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {classNames.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
+                  {sections.map((section) => (
+                    <SelectItem key={section} value={section}>
+                      Section {section}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -276,7 +311,7 @@ export function TimetableGenerator() {
       </div>
 
       {/* Generate Button */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
         <Button
           onClick={generateTimetable}
           disabled={isGenerating}
@@ -291,10 +326,16 @@ export function TimetableGenerator() {
           {isGenerating ? "Generating..." : "Generate Smart Timetable"}
         </Button>
         {timetable.length > 0 && (
-          <div className="flex items-center gap-2 text-sm text-success">
-            <CheckCircle2 className="w-4 h-4" />
-            {timetable.length} classes scheduled
-          </div>
+          <>
+            <div className="flex items-center gap-2 text-sm text-success">
+              <CheckCircle2 className="w-4 h-4" />
+              {timetable.length} classes scheduled
+            </div>
+            <Button variant="outline" className="gap-2" onClick={exportTimetable}>
+              <Download className="w-4 h-4" />
+              Export
+            </Button>
+          </>
         )}
       </div>
 
@@ -321,7 +362,7 @@ export function TimetableGenerator() {
         <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
           <div className="p-5 border-b border-border">
             <h3 className="font-semibold text-foreground">
-              Generated Timetable - {selectedClass}
+              Generated Timetable - {currentDept?.code} Section {currentSection}
             </h3>
             <p className="text-sm text-muted-foreground">
               Week schedule with {timetable.length} classes
