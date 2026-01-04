@@ -4,7 +4,6 @@ import {
   classrooms,
   timeSlots,
   days,
-  subjectsByDepartment,
   TimetableEntry,
 } from "@/data/mockData";
 import { useDepartment } from "@/contexts/DepartmentContext";
@@ -20,6 +19,14 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Sparkles,
   RefreshCw,
   AlertTriangle,
@@ -28,9 +35,14 @@ import {
   User,
   MapPin,
   Download,
+  UserX,
+  ArrowRight,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export function TimetableGenerator() {
   const { selectedDepartment, selectedSection, getCurrentDepartment, getSectionsForDepartment } = useDepartment();
@@ -39,7 +51,6 @@ export function TimetableGenerator() {
 
   const deptTeachers = teachers.filter(t => t.departmentId === selectedDepartment);
   const deptClassrooms = classrooms.filter(c => c.departmentId === selectedDepartment);
-  const deptSubjects = subjectsByDepartment[selectedDepartment] || [];
 
   const [selectedTeachers, setSelectedTeachers] = useState<string[]>([]);
   const [selectedClassrooms, setSelectedClassrooms] = useState<string[]>([]);
@@ -48,6 +59,11 @@ export function TimetableGenerator() {
   const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [conflicts, setConflicts] = useState<string[]>([]);
+  
+  // Teacher substitution state
+  const [substitutionDialog, setSubstitutionDialog] = useState(false);
+  const [absentTeacher, setAbsentTeacher] = useState<string>("");
+  const [substituteTeacher, setSubstituteTeacher] = useState<string>("");
 
   const activeTimeSlots = timeSlots.filter((ts) => ts.isActive);
 
@@ -96,7 +112,6 @@ export function TimetableGenerator() {
         activeTimeSlots.forEach((slot) => {
           const timeSlotStr = `${slot.startTime}-${slot.endTime}`;
 
-          // Randomly assign (for demo purposes)
           if (Math.random() > 0.4) {
             const availableTeachers = selectedTeachers.filter((tId) => {
               const teacher = deptTeachers.find((t) => t.id === tId);
@@ -173,8 +188,134 @@ export function TimetableGenerator() {
     return grid;
   }, [timetable, selectedDays, activeTimeSlots]);
 
-  const exportTimetable = () => {
-    toast.success("Timetable export feature - Coming soon!");
+  // Get teachers currently in the timetable
+  const teachersInTimetable = useMemo(() => {
+    const ids = new Set(timetable.map(t => t.teacherId));
+    return deptTeachers.filter(t => ids.has(t.id));
+  }, [timetable, deptTeachers]);
+
+  // Get available substitutes (teachers not assigned in a conflicting slot)
+  const availableSubstitutes = useMemo(() => {
+    if (!absentTeacher) return deptTeachers;
+    
+    const absentTeacherSlots = timetable
+      .filter(t => t.teacherId === absentTeacher)
+      .map(t => `${t.day}-${t.timeSlot}`);
+    
+    return deptTeachers.filter(t => {
+      if (t.id === absentTeacher) return false;
+      const teacherSlots = timetable
+        .filter(entry => entry.teacherId === t.id)
+        .map(entry => `${entry.day}-${entry.timeSlot}`);
+      
+      // Check if there's any overlap
+      const hasConflict = absentTeacherSlots.some(slot => teacherSlots.includes(slot));
+      return !hasConflict;
+    });
+  }, [absentTeacher, timetable, deptTeachers]);
+
+  const handleSubstitution = () => {
+    if (!absentTeacher || !substituteTeacher) {
+      toast.error("Please select both absent and substitute teachers");
+      return;
+    }
+
+    const substitute = deptTeachers.find(t => t.id === substituteTeacher);
+    if (!substitute) return;
+
+    const updatedTimetable = timetable.map(entry => {
+      if (entry.teacherId === absentTeacher) {
+        return {
+          ...entry,
+          teacherId: substituteTeacher,
+          teacherName: substitute.name,
+          subject: substitute.subject,
+        };
+      }
+      return entry;
+    });
+
+    const affectedCount = timetable.filter(t => t.teacherId === absentTeacher).length;
+    setTimetable(updatedTimetable);
+    setSubstitutionDialog(false);
+    setAbsentTeacher("");
+    setSubstituteTeacher("");
+    toast.success(`Substituted ${affectedCount} classes with ${substitute.name}`);
+  };
+
+  const exportTimetablePDF = () => {
+    if (timetable.length === 0) {
+      toast.error("No timetable to export");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "landscape" });
+    
+    // Title
+    doc.setFontSize(18);
+    doc.setTextColor(79, 70, 229); // Indigo color
+    doc.text(`${currentDept?.name} - Section ${currentSection}`, 14, 20);
+    
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Weekly Timetable", 14, 28);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 35);
+
+    // Prepare table data
+    const tableHead = ["Time", ...selectedDays];
+    const tableBody = activeTimeSlots.map(slot => {
+      const timeSlotStr = `${slot.startTime}-${slot.endTime}`;
+      const row = [timeSlotStr];
+      
+      selectedDays.forEach(day => {
+        const entry = timetableGrid[day]?.[timeSlotStr];
+        if (entry) {
+          row.push(`${entry.subject}\n${entry.teacherName}\n${entry.classroomName}`);
+        } else {
+          row.push("-");
+        }
+      });
+      
+      return row;
+    });
+
+    autoTable(doc, {
+      head: [tableHead],
+      body: tableBody,
+      startY: 42,
+      theme: "grid",
+      headStyles: {
+        fillColor: [79, 70, 229],
+        textColor: 255,
+        fontStyle: "bold",
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 3,
+        valign: "middle",
+        halign: "center",
+      },
+      columnStyles: {
+        0: { fontStyle: "bold", halign: "left" },
+      },
+    });
+
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(
+        `AI Smart Classroom System - Page ${i} of ${pageCount}`,
+        doc.internal.pageSize.getWidth() / 2,
+        doc.internal.pageSize.getHeight() - 10,
+        { align: "center" }
+      );
+    }
+
+    doc.save(`timetable-${currentDept?.code}-section-${currentSection}.pdf`);
+    toast.success("Timetable exported to PDF!");
   };
 
   return (
@@ -310,7 +451,7 @@ export function TimetableGenerator() {
         </div>
       </div>
 
-      {/* Generate Button */}
+      {/* Action Buttons */}
       <div className="flex items-center gap-4 flex-wrap">
         <Button
           onClick={generateTimetable}
@@ -325,15 +466,26 @@ export function TimetableGenerator() {
           )}
           {isGenerating ? "Generating..." : "Generate Smart Timetable"}
         </Button>
+        
         {timetable.length > 0 && (
           <>
             <div className="flex items-center gap-2 text-sm text-success">
               <CheckCircle2 className="w-4 h-4" />
               {timetable.length} classes scheduled
             </div>
-            <Button variant="outline" className="gap-2" onClick={exportTimetable}>
-              <Download className="w-4 h-4" />
-              Export
+            
+            <Button 
+              variant="outline" 
+              className="gap-2" 
+              onClick={() => setSubstitutionDialog(true)}
+            >
+              <UserX className="w-4 h-4" />
+              Teacher Substitution
+            </Button>
+            
+            <Button variant="outline" className="gap-2" onClick={exportTimetablePDF}>
+              <FileText className="w-4 h-4" />
+              Export PDF
             </Button>
           </>
         )}
@@ -359,7 +511,7 @@ export function TimetableGenerator() {
 
       {/* Timetable Grid */}
       {timetable.length > 0 && (
-        <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
+        <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden" id="timetable-grid">
           <div className="p-5 border-b border-border">
             <h3 className="font-semibold text-foreground">
               Generated Timetable - {currentDept?.code} Section {currentSection}
@@ -418,6 +570,96 @@ export function TimetableGenerator() {
           </div>
         </div>
       )}
+
+      {/* Teacher Substitution Dialog */}
+      <Dialog open={substitutionDialog} onOpenChange={setSubstitutionDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserX className="w-5 h-5 text-warning" />
+              Teacher Substitution
+            </DialogTitle>
+            <DialogDescription>
+              Select an absent teacher and assign a substitute from the same department.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Absent Teacher</Label>
+              <Select value={absentTeacher} onValueChange={(val) => {
+                setAbsentTeacher(val);
+                setSubstituteTeacher("");
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select absent teacher" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teachersInTimetable.map(teacher => (
+                    <SelectItem key={teacher.id} value={teacher.id}>
+                      {teacher.name} - {teacher.subject}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {absentTeacher && (
+              <div className="flex items-center justify-center py-2">
+                <ArrowRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label>Substitute Teacher</Label>
+              <Select 
+                value={substituteTeacher} 
+                onValueChange={setSubstituteTeacher}
+                disabled={!absentTeacher}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={absentTeacher ? "Select substitute" : "First select absent teacher"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSubstitutes.map(teacher => (
+                    <SelectItem key={teacher.id} value={teacher.id}>
+                      <div className="flex items-center gap-2">
+                        <span>{teacher.name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {teacher.subject}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {absentTeacher && availableSubstitutes.length === 0 && (
+                <p className="text-xs text-warning">No available substitutes without schedule conflicts</p>
+              )}
+            </div>
+            
+            {absentTeacher && (
+              <div className="bg-secondary/50 rounded-lg p-3 text-sm">
+                <p className="text-muted-foreground">
+                  <strong className="text-foreground">{timetable.filter(t => t.teacherId === absentTeacher).length}</strong> classes will be reassigned
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSubstitutionDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubstitution}
+              disabled={!absentTeacher || !substituteTeacher}
+            >
+              Apply Substitution
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
