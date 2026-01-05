@@ -1,7 +1,43 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { z } from "zod";
 
+// Validation schemas
+const teacherSchema = z.object({
+  department_id: z.string().uuid({ message: "Invalid department ID" }),
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(100, "Name must be less than 100 characters"),
+  subject: z.string().trim().min(2, "Subject must be at least 2 characters").max(100, "Subject must be less than 100 characters"),
+  email: z.string().trim().email("Invalid email address").max(255).nullable().optional(),
+  availability: z.array(z.string()).nullable().optional(),
+  is_absent: z.boolean().nullable().optional(),
+  absent_date: z.string().nullable().optional(),
+});
+
+const studentSchema = z.object({
+  department_id: z.string().uuid({ message: "Invalid department ID" }),
+  section_id: z.string().uuid({ message: "Invalid section ID" }),
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(100, "Name must be less than 100 characters"),
+  roll_number: z.string().trim().min(1, "Roll number is required").max(50, "Roll number must be less than 50 characters"),
+  email: z.string().trim().email("Invalid email address").max(255).nullable().optional(),
+  attendance_percentage: z.number().min(0).max(100).nullable().optional(),
+});
+
+const notificationSchema = z.object({
+  department_id: z.string().uuid({ message: "Invalid department ID" }),
+  section_id: z.string().uuid().nullable().optional(),
+  type: z.enum(["email", "whatsapp", "app", "sms"]),
+  title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
+  message: z.string().trim().min(1, "Message is required").max(2000, "Message must be less than 2000 characters"),
+  recipient_type: z.enum(["students", "teachers", "all"]),
+});
+
+const timeSlotSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(50),
+  start_time: z.string().trim().min(1, "Start time is required"),
+  end_time: z.string().trim().min(1, "End time is required"),
+  is_active: z.boolean().nullable().optional(),
+});
 // Types based on database schema
 export interface DbDepartment {
   id: string;
@@ -148,6 +184,8 @@ export function useAddTeacher() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (teacher: Omit<DbTeacher, "id" | "created_at">) => {
+      // Validate input before sending to database
+      teacherSchema.parse(teacher);
       const { data, error } = await supabase.from("teachers").insert(teacher).select().single();
       if (error) throw error;
       return data;
@@ -157,7 +195,11 @@ export function useAddTeacher() {
       toast.success("Teacher added successfully");
     },
     onError: (error) => {
-      toast.error("Failed to add teacher: " + error.message);
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        toast.error("Failed to add teacher");
+      }
     },
   });
 }
@@ -220,6 +262,8 @@ export function useAddStudent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (student: Omit<DbStudent, "id" | "created_at">) => {
+      // Validate input before sending to database
+      studentSchema.parse(student);
       const { data, error } = await supabase.from("students").insert(student).select().single();
       if (error) throw error;
       return data;
@@ -229,7 +273,11 @@ export function useAddStudent() {
       toast.success("Student added successfully");
     },
     onError: (error) => {
-      toast.error("Failed to add student: " + error.message);
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        toast.error("Failed to add student");
+      }
     },
   });
 }
@@ -304,6 +352,8 @@ export function useAddTimeSlot() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (timeSlot: Omit<DbTimeSlot, "id" | "created_at">) => {
+      // Validate input before sending to database
+      timeSlotSchema.parse(timeSlot);
       const { data, error } = await supabase.from("time_slots").insert(timeSlot).select().single();
       if (error) throw error;
       return data;
@@ -312,7 +362,11 @@ export function useAddTimeSlot() {
       queryClient.invalidateQueries({ queryKey: ["time_slots"] });
     },
     onError: (error) => {
-      toast.error("Failed to add time slot: " + error.message);
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        toast.error("Failed to add time slot");
+      }
     },
   });
 }
@@ -412,6 +466,9 @@ export function useSendNotification() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (notification: Omit<DbNotification, "id" | "created_at" | "status">) => {
+      // Validate input before sending to database
+      notificationSchema.parse(notification);
+      
       // Simulate sending delay
       await new Promise(resolve => setTimeout(resolve, 500));
       
@@ -428,7 +485,11 @@ export function useSendNotification() {
       toast.success(`${data.type.toUpperCase()} notification sent to ${data.recipient_type}`);
     },
     onError: (error) => {
-      toast.error("Failed to send notification: " + error.message);
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        toast.error("Failed to send notification");
+      }
     },
   });
 }
