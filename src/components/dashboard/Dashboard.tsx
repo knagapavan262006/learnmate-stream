@@ -1,56 +1,68 @@
-import { Users, GraduationCap, Building2, Calendar } from "lucide-react";
+import { Users, GraduationCap, Building2, Calendar, AlertTriangle, Bell } from "lucide-react";
 import { StatCard } from "./StatCard";
 import { UtilizationChart } from "./UtilizationChart";
 import { TodaySchedule } from "./TodaySchedule";
-import { teachers, students, classrooms, timetableData } from "@/data/mockData";
+import { AlertsPanel } from "./AlertsPanel";
 import { useDepartment } from "@/contexts/DepartmentContext";
+import { useTeachers, useStudents, useClassrooms, useTimetableEntries } from "@/hooks/useDatabase";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function Dashboard() {
-  const { selectedDepartment, selectedSection, getCurrentDepartment } = useDepartment();
+  const { selectedDepartmentId, selectedSectionId, getCurrentDepartment, selectedAcademicDay } = useDepartment();
   const currentDept = getCurrentDepartment();
 
-  const deptTeachers = teachers.filter(t => t.departmentId === selectedDepartment);
-  const deptStudents = students.filter(s => s.departmentId === selectedDepartment);
-  const sectionStudents = deptStudents.filter(s => s.section === selectedSection);
-  const deptClassrooms = classrooms.filter(c => c.departmentId === selectedDepartment);
+  const { data: teachers = [], isLoading: teachersLoading } = useTeachers(selectedDepartmentId);
+  const { data: students = [], isLoading: studentsLoading } = useStudents(selectedDepartmentId, selectedSectionId);
+  const { data: classrooms = [], isLoading: classroomsLoading } = useClassrooms(selectedDepartmentId);
+  const { data: timetableEntries = [] } = useTimetableEntries(selectedDepartmentId, selectedSectionId);
 
-  const todayClasses = timetableData.filter(
-    (entry) => entry.day === "Monday" && entry.departmentId === selectedDepartment && entry.section === selectedSection
-  ).length;
+  const absentTeachers = teachers.filter(t => t.is_absent);
+  const todayClasses = timetableEntries.filter(entry => entry.day === selectedAcademicDay).length;
+
+  const isLoading = teachersLoading || studentsLoading || classroomsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-20 w-full" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Department Header */}
       <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
         <h2 className="text-lg font-semibold text-foreground">
-          {currentDept?.name || "Department"} - Section {selectedSection}
+          {currentDept?.name || "Department"} - Dashboard
         </h2>
         <p className="text-sm text-muted-foreground">
-          Department-wise overview and analytics
+          Department-wise overview and real-time analytics
         </p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Dept Teachers"
-          value={deptTeachers.length}
+          value={teachers.length}
           subtitle="Faculty in department"
           icon={Users}
           variant="primary"
-          trend={{ value: 12, isPositive: true }}
         />
         <StatCard
           title="Section Students"
-          value={sectionStudents.length}
-          subtitle={`${deptStudents.length} in department`}
+          value={students.length}
+          subtitle="Enrolled in section"
           icon={GraduationCap}
           variant="accent"
-          trend={{ value: 8, isPositive: true }}
         />
         <StatCard
           title="Classrooms"
-          value={deptClassrooms.length}
+          value={classrooms.length}
           subtitle="Department rooms"
           icon={Building2}
           variant="success"
@@ -58,21 +70,31 @@ export function Dashboard() {
         <StatCard
           title="Today's Classes"
           value={todayClasses}
-          subtitle="Scheduled for section"
+          subtitle={selectedAcademicDay}
           icon={Calendar}
           variant="warning"
         />
+        <StatCard
+          title="Absent Teachers"
+          value={absentTeachers.length}
+          subtitle="Need substitution"
+          icon={AlertTriangle}
+          variant={absentTeachers.length > 0 ? "warning" : "success"}
+        />
       </div>
 
-      {/* Charts Row */}
+      {/* Charts and Alerts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <UtilizationChart />
         </div>
         <div className="lg:col-span-1">
-          <TodaySchedule />
+          <AlertsPanel />
         </div>
       </div>
+
+      {/* Today's Schedule */}
+      <TodaySchedule />
     </div>
   );
 }
