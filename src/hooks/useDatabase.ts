@@ -300,6 +300,40 @@ export function useTimeSlots() {
   });
 }
 
+export function useAddTimeSlot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (timeSlot: Omit<DbTimeSlot, "id" | "created_at">) => {
+      const { data, error } = await supabase.from("time_slots").insert(timeSlot).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["time_slots"] });
+    },
+    onError: (error) => {
+      toast.error("Failed to add time slot: " + error.message);
+    },
+  });
+}
+
+export function useUpdateTimeSlot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...timeSlot }: Partial<DbTimeSlot> & { id: string }) => {
+      const { data, error } = await supabase.from("time_slots").update(timeSlot).eq("id", id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["time_slots"] });
+    },
+    onError: (error) => {
+      toast.error("Failed to update time slot: " + error.message);
+    },
+  });
+}
+
 // Timetable Entries
 export function useTimetableEntries(departmentId?: string, sectionId?: string) {
   return useQuery({
