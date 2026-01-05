@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { timeSlots as initialTimeSlots, days, TimeSlot } from "@/data/mockData";
+import { useTimeSlots, useAddTimeSlot, useUpdateTimeSlot } from "@/hooks/useDatabase";
 import {
   Table,
   TableBody,
@@ -20,42 +20,63 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Clock, Coffee } from "lucide-react";
+import { Plus, Clock, Coffee, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 export function TimeSlotsModule() {
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>(initialTimeSlots);
+  const { data: timeSlots = [], isLoading } = useTimeSlots();
+  const addTimeSlot = useAddTimeSlot();
+  const updateTimeSlot = useUpdateTimeSlot();
+  
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newSlot, setNewSlot] = useState({
+    name: "",
     startTime: "",
     endTime: "",
   });
 
-  const toggleSlotStatus = (id: string) => {
-    setTimeSlots(
-      timeSlots.map((slot) =>
-        slot.id === id ? { ...slot, isActive: !slot.isActive } : slot
-      )
+  const toggleSlotStatus = (id: string, currentStatus: boolean) => {
+    updateTimeSlot.mutate(
+      { id, is_active: !currentStatus },
+      {
+        onSuccess: () => toast.success("Time slot updated"),
+        onError: () => toast.error("Failed to update time slot"),
+      }
     );
-    toast.success("Time slot updated");
   };
 
   const handleAddSlot = () => {
-    if (!newSlot.startTime || !newSlot.endTime) {
+    if (!newSlot.name || !newSlot.startTime || !newSlot.endTime) {
       toast.error("Please fill in all fields");
       return;
     }
-    const slot: TimeSlot = {
-      id: `TS${timeSlots.length + 1}`,
-      startTime: newSlot.startTime,
-      endTime: newSlot.endTime,
-      isActive: true,
-    };
-    setTimeSlots([...timeSlots, slot]);
-    setNewSlot({ startTime: "", endTime: "" });
-    setIsAddOpen(false);
-    toast.success("Time slot added");
+    addTimeSlot.mutate(
+      {
+        name: newSlot.name,
+        start_time: newSlot.startTime,
+        end_time: newSlot.endTime,
+        is_active: true,
+      },
+      {
+        onSuccess: () => {
+          setNewSlot({ name: "", startTime: "", endTime: "" });
+          setIsAddOpen(false);
+          toast.success("Time slot added");
+        },
+        onError: () => toast.error("Failed to add time slot"),
+      }
+    );
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -80,6 +101,17 @@ export function TimeSlotsModule() {
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
                   <div className="space-y-2">
+                    <Label htmlFor="name">Slot Name</Label>
+                    <Input
+                      id="name"
+                      placeholder="e.g., Period 1"
+                      value={newSlot.name}
+                      onChange={(e) =>
+                        setNewSlot({ ...newSlot, name: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="startTime">Start Time</Label>
                     <Input
                       id="startTime"
@@ -101,8 +133,8 @@ export function TimeSlotsModule() {
                       }
                     />
                   </div>
-                  <Button onClick={handleAddSlot} className="w-full">
-                    Add Time Slot
+                  <Button onClick={handleAddSlot} className="w-full" disabled={addTimeSlot.isPending}>
+                    {addTimeSlot.isPending ? "Adding..." : "Add Time Slot"}
                   </Button>
                 </div>
               </DialogContent>
@@ -120,10 +152,15 @@ export function TimeSlotsModule() {
             </TableHeader>
             <TableBody>
               {timeSlots.map((slot, index) => {
-                const start = parseInt(slot.startTime.split(":")[0]);
-                const end = parseInt(slot.endTime.split(":")[0]);
-                const duration = end - start;
-                const isBreak = slot.startTime === "12:00";
+                const startParts = slot.start_time.split(":");
+                const endParts = slot.end_time.split(":");
+                const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1] || "0");
+                const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1] || "0");
+                const durationMinutes = endMinutes - startMinutes;
+                const hours = Math.floor(durationMinutes / 60);
+                const minutes = durationMinutes % 60;
+                const durationStr = hours > 0 ? `${hours}h${minutes > 0 ? ` ${minutes}m` : ""}` : `${minutes}m`;
+                const isBreak = slot.name.toLowerCase().includes("break") || slot.name.toLowerCase().includes("lunch");
 
                 return (
                   <TableRow
@@ -138,26 +175,26 @@ export function TimeSlotsModule() {
                         ) : (
                           <Clock className="w-4 h-4 text-muted-foreground" />
                         )}
-                        <span className="font-mono text-sm">{slot.id}</span>
+                        <span className="font-medium text-sm">{slot.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">{slot.startTime}</TableCell>
-                    <TableCell className="font-medium">{slot.endTime}</TableCell>
+                    <TableCell className="font-medium">{slot.start_time}</TableCell>
+                    <TableCell className="font-medium">{slot.end_time}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{duration}h</Badge>
+                      <Badge variant="secondary">{durationStr}</Badge>
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-2">
                         <Switch
-                          checked={slot.isActive}
-                          onCheckedChange={() => toggleSlotStatus(slot.id)}
+                          checked={slot.is_active ?? true}
+                          onCheckedChange={() => toggleSlotStatus(slot.id, slot.is_active ?? true)}
                         />
                         <span
                           className={`text-xs ${
-                            slot.isActive ? "text-success" : "text-muted-foreground"
+                            slot.is_active ? "text-success" : "text-muted-foreground"
                           }`}
                         >
-                          {slot.isActive ? "Active" : "Inactive"}
+                          {slot.is_active ? "Active" : "Inactive"}
                         </span>
                       </div>
                     </TableCell>
@@ -191,7 +228,7 @@ export function TimeSlotsModule() {
                       variant="outline"
                       className="mt-2"
                     >
-                      {day === "Saturday" ? "4 slots" : "7 slots"}
+                      {day === "Saturday" ? "4 slots" : `${timeSlots.filter(s => s.is_active).length} slots`}
                     </Badge>
                   </div>
                 </div>
@@ -208,7 +245,7 @@ export function TimeSlotsModule() {
                 <div>
                   <p className="text-muted-foreground">Active Time Slots</p>
                   <p className="text-xl font-bold text-foreground">
-                    {timeSlots.filter((s) => s.isActive).length}
+                    {timeSlots.filter((s) => s.is_active).length}
                   </p>
                 </div>
               </div>
