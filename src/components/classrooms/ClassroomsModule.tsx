@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { classrooms as initialClassrooms, Classroom } from "@/data/mockData";
 import { useDepartment } from "@/contexts/DepartmentContext";
+import { useClassrooms } from "@/hooks/useDatabase";
 import {
   Table,
   TableBody,
@@ -12,17 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Search, Users, Monitor, Snowflake, Presentation } from "lucide-react";
-import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Search, Monitor, Snowflake, Presentation } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -33,7 +25,6 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { cn } from "@/lib/utils";
 
 const facilityIcons: Record<string, React.ReactNode> = {
   Projector: <Presentation className="w-3 h-3" />,
@@ -43,53 +34,37 @@ const facilityIcons: Record<string, React.ReactNode> = {
 };
 
 export function ClassroomsModule() {
-  const { selectedDepartment, getCurrentDepartment } = useDepartment();
+  const { selectedDepartmentId, getCurrentDepartment } = useDepartment();
   const currentDept = getCurrentDepartment();
 
-  const [classrooms, setClassrooms] = useState<Classroom[]>(initialClassrooms);
+  const { data: classrooms = [], isLoading } = useClassrooms(selectedDepartmentId);
   const [search, setSearch] = useState("");
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [newRoom, setNewRoom] = useState({
-    name: "",
-    capacity: "",
-  });
 
   const filteredClassrooms = classrooms.filter(
-    (c) =>
-      c.departmentId === selectedDepartment &&
-      c.name.toLowerCase().includes(search.toLowerCase())
+    (c) => c.name.toLowerCase().includes(search.toLowerCase())
   );
 
   const chartData = filteredClassrooms.map((room) => ({
-    name: room.name,
-    used: room.currentUsage,
-    available: 100 - room.currentUsage,
+    name: room.name.substring(0, 12),
+    used: room.usage_percentage || 0,
+    available: 100 - (room.usage_percentage || 0),
   }));
-
-  const handleAddRoom = () => {
-    if (!newRoom.name || !newRoom.capacity) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-    const room: Classroom = {
-      id: `R${classrooms.length + 600}`,
-      name: newRoom.name,
-      capacity: parseInt(newRoom.capacity),
-      currentUsage: 0,
-      facilities: ["Projector", "AC"],
-      departmentId: selectedDepartment,
-    };
-    setClassrooms([...classrooms, room]);
-    setNewRoom({ name: "", capacity: "" });
-    setIsAddOpen(false);
-    toast.success("Classroom added successfully");
-  };
 
   const getUsageColor = (usage: number) => {
     if (usage >= 80) return "bg-success";
     if (usage >= 50) return "bg-warning";
     return "bg-primary";
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -99,7 +74,7 @@ export function ClassroomsModule() {
           {currentDept?.name} - Classrooms
         </h2>
         <p className="text-sm text-muted-foreground">
-          {filteredClassrooms.length} rooms in department
+          {filteredClassrooms.length} classrooms in department
         </p>
       </div>
 
@@ -114,82 +89,33 @@ export function ClassroomsModule() {
             className="pl-10"
           />
         </div>
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Add Classroom
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Classroom to {currentDept?.code}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="roomName">Room Name *</Label>
-                <Input
-                  id="roomName"
-                  value={newRoom.name}
-                  onChange={(e) => setNewRoom({ ...newRoom, name: e.target.value })}
-                  placeholder="Room 301"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="capacity">Capacity *</Label>
-                <Input
-                  id="capacity"
-                  type="number"
-                  value={newRoom.capacity}
-                  onChange={(e) => setNewRoom({ ...newRoom, capacity: e.target.value })}
-                  placeholder="50"
-                />
-              </div>
-              <Button onClick={handleAddRoom} className="w-full">
-                Add Classroom
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
 
-      {/* Chart */}
+      {/* Utilization Chart */}
       {chartData.length > 0 && (
         <div className="bg-card rounded-xl border border-border shadow-card p-5">
-          <div className="mb-5">
-            <h3 className="font-semibold text-foreground">Classroom Utilization Overview</h3>
-            <p className="text-sm text-muted-foreground">Used vs available capacity</p>
-          </div>
-          <div className="h-[280px]">
+          <h3 className="font-semibold text-foreground mb-4">Classroom Utilization</h3>
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} layout="vertical" margin={{ left: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                <XAxis
-                  type="number"
-                  domain={[0, 100]}
-                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                  tickFormatter={(value) => `${value}%`}
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
                 />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                  width={80}
+                <YAxis 
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
                 />
-                <Tooltip
-                  contentStyle={{
+                <Tooltip 
+                  contentStyle={{ 
                     backgroundColor: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
+                    borderRadius: "8px"
                   }}
-                  formatter={(value: number, name: string) => [
-                    `${value}%`,
-                    name === "used" ? "Used" : "Available",
-                  ]}
                 />
                 <Legend />
-                <Bar dataKey="used" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} name="Used" />
-                <Bar dataKey="available" stackId="a" fill="hsl(var(--secondary))" radius={[0, 4, 4, 0]} name="Available" />
+                <Bar dataKey="used" stackId="a" fill="hsl(var(--primary))" name="Used %" />
+                <Bar dataKey="available" stackId="a" fill="hsl(var(--secondary))" name="Available %" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -201,55 +127,51 @@ export function ClassroomsModule() {
         <Table>
           <TableHeader>
             <TableRow className="table-header">
-              <TableHead className="w-24">ID</TableHead>
-              <TableHead>Room Name</TableHead>
+              <TableHead>Name</TableHead>
               <TableHead>Capacity</TableHead>
-              <TableHead>Current Usage</TableHead>
-              <TableHead className="hidden md:table-cell">Facilities</TableHead>
+              <TableHead>Usage</TableHead>
+              <TableHead>Facilities</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredClassrooms.length > 0 ? (
-              filteredClassrooms.map((room, index) => (
-                <TableRow
-                  key={room.id}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${index * 30}ms` }}
-                >
-                  <TableCell className="font-mono text-sm text-muted-foreground">
-                    {room.id}
-                  </TableCell>
-                  <TableCell className="font-medium">{room.name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-muted-foreground" />
-                      <span>{room.capacity}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3 max-w-48">
-                      <Progress
-                        value={room.currentUsage}
-                        className={cn("h-2 flex-1", getUsageColor(room.currentUsage))}
-                      />
-                      <span className="text-sm font-medium w-12">{room.currentUsage}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <div className="flex flex-wrap gap-1">
-                      {room.facilities.map((facility) => (
-                        <Badge key={facility} variant="outline" className="gap-1 text-xs">
-                          {facilityIcons[facility]}
-                          {facility}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+              filteredClassrooms.map((room, index) => {
+                const usage = room.usage_percentage || 0;
+                return (
+                  <TableRow
+                    key={room.id}
+                    className="animate-fade-in"
+                    style={{ animationDelay: `${index * 30}ms` }}
+                  >
+                    <TableCell className="font-medium">{room.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{room.capacity} seats</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3 min-w-32">
+                        <Progress 
+                          value={usage} 
+                          className={`h-2 flex-1 ${getUsageColor(usage)}`}
+                        />
+                        <span className="text-sm font-medium">{usage}%</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {(room.facilities || []).map((facility) => (
+                          <Badge key={facility} variant="outline" className="text-xs gap-1">
+                            {facilityIcons[facility]}
+                            {facility}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                   No classrooms found in this department
                 </TableCell>
               </TableRow>

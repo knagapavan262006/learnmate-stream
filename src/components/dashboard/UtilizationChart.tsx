@@ -1,89 +1,44 @@
-import { getClassroomUtilization } from "@/data/mockData";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useDepartment } from "@/contexts/DepartmentContext";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
-
-const getBarColor = (usage: number) => {
-  if (usage >= 80) return "hsl(142, 71%, 45%)";
-  if (usage >= 50) return "hsl(38, 92%, 50%)";
-  return "hsl(238, 84%, 60%)";
-};
+import { useClassrooms } from "@/hooks/useDatabase";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function UtilizationChart() {
-  const { selectedDepartment, getCurrentDepartment } = useDepartment();
+  const { selectedDepartmentId, getCurrentDepartment } = useDepartment();
   const currentDept = getCurrentDepartment();
-  const utilization = getClassroomUtilization(selectedDepartment);
+  const { data: classrooms = [], isLoading } = useClassrooms(selectedDepartmentId);
+
+  const chartData = classrooms.map(room => ({
+    name: room.name.substring(0, 12),
+    usage: room.usage_percentage || 0,
+  }));
+
+  const getBarColor = (usage: number) => {
+    if (usage >= 80) return "hsl(var(--success))";
+    if (usage >= 50) return "hsl(var(--warning))";
+    return "hsl(var(--primary))";
+  };
+
+  if (isLoading) return <Skeleton className="h-80 w-full" />;
 
   return (
     <div className="bg-card rounded-xl border border-border shadow-card p-5">
-      <div className="mb-5">
-        <h3 className="font-semibold text-foreground">Classroom Utilization - {currentDept?.code}</h3>
-        <p className="text-sm text-muted-foreground">Department room usage analysis</p>
-      </div>
-      <div className="h-[280px]">
-        {utilization.length > 0 ? (
+      <h3 className="font-semibold text-foreground mb-4">{currentDept?.code} - Classroom Utilization</h3>
+      {chartData.length > 0 ? (
+        <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={utilization}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis
-                dataKey="name"
-                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-                tickLine={false}
-                axisLine={false}
-                angle={-15}
-                textAnchor="end"
-                height={60}
-              />
-              <YAxis
-                domain={[0, 100]}
-                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `${value}%`}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
-                formatter={(value: number) => [`${value}%`, "Utilization"]}
-              />
-              <Bar dataKey="used" radius={[6, 6, 0, 0]} maxBarSize={50}>
-                {utilization.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={getBarColor(entry.used)} />
-                ))}
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="name" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+              <YAxis domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Bar dataKey="usage" radius={[4, 4, 0, 0]}>
+                {chartData.map((entry, i) => <Cell key={i} fill={getBarColor(entry.usage)} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        ) : (
-          <div className="h-full flex items-center justify-center text-muted-foreground">
-            No classrooms assigned to this department
-          </div>
-        )}
-      </div>
-      <div className="flex justify-center gap-6 mt-4">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-success" />
-          <span className="text-xs text-muted-foreground">High (≥80%)</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-warning" />
-          <span className="text-xs text-muted-foreground">Medium (50-79%)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-primary" />
-          <span className="text-xs text-muted-foreground">Low (&lt;50%)</span>
-        </div>
-      </div>
+      ) : <div className="h-64 flex items-center justify-center text-muted-foreground">No classrooms</div>}
     </div>
   );
 }

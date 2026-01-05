@@ -1,51 +1,59 @@
-import { createContext, useContext, useState, ReactNode } from "react";
-
-export interface Department {
-  id: string;
-  name: string;
-  code: string;
-  sections: string[];
-}
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { useDepartments, useSections, DbDepartment, DbSection } from "@/hooks/useDatabase";
 
 interface DepartmentContextType {
-  departments: Department[];
-  setDepartments: React.Dispatch<React.SetStateAction<Department[]>>;
-  selectedDepartment: string;
-  setSelectedDepartment: (department: string) => void;
-  selectedSection: string;
-  setSelectedSection: (section: string) => void;
-  getCurrentDepartment: () => Department | undefined;
-  getSectionsForDepartment: (deptId: string) => string[];
+  departments: DbDepartment[];
+  sections: DbSection[];
+  selectedDepartmentId: string;
+  setSelectedDepartmentId: (departmentId: string) => void;
+  selectedSectionId: string;
+  setSelectedSectionId: (sectionId: string) => void;
+  selectedAcademicDay: string;
+  setSelectedAcademicDay: (day: string) => void;
+  getCurrentDepartment: () => DbDepartment | undefined;
+  getSectionsForDepartment: (deptId: string) => DbSection[];
+  isLoading: boolean;
 }
-
-const defaultDepartments: Department[] = [
-  { id: "CSE", name: "Computer Science & Engineering", code: "CSE", sections: ["A", "B", "C"] },
-  { id: "ECE", name: "Electronics & Communication", code: "ECE", sections: ["A", "B"] },
-  { id: "EEE", name: "Electrical & Electronics", code: "EEE", sections: ["A", "B"] },
-  { id: "MECH", name: "Mechanical Engineering", code: "MECH", sections: ["A", "B", "C"] },
-  { id: "CIVIL", name: "Civil Engineering", code: "CIVIL", sections: ["A", "B"] },
-];
 
 const DepartmentContext = createContext<DepartmentContextType | undefined>(undefined);
 
 export function DepartmentProvider({ children }: { children: ReactNode }) {
-  const [departments, setDepartments] = useState<Department[]>(defaultDepartments);
-  const [selectedDepartment, setSelectedDepartment] = useState<string>("CSE");
-  const [selectedSection, setSelectedSection] = useState<string>("A");
-
-  const getCurrentDepartment = () => departments.find(d => d.id === selectedDepartment);
+  const { data: departments = [], isLoading: depsLoading } = useDepartments();
+  const { data: allSections = [], isLoading: secLoading } = useSections();
   
-  const getSectionsForDepartment = (deptId: string) => {
-    const dept = departments.find(d => d.id === deptId);
-    return dept?.sections || [];
-  };
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("");
+  const [selectedSectionId, setSelectedSectionId] = useState<string>("");
+  const [selectedAcademicDay, setSelectedAcademicDay] = useState<string>(() => 
+    new Date().toLocaleDateString("en-US", { weekday: "long" })
+  );
 
-  // Reset section when department changes
+  // Set initial department when data loads
+  useEffect(() => {
+    if (departments.length > 0 && !selectedDepartmentId) {
+      setSelectedDepartmentId(departments[0].id);
+    }
+  }, [departments, selectedDepartmentId]);
+
+  // Set initial section when department changes
+  useEffect(() => {
+    if (selectedDepartmentId && allSections.length > 0) {
+      const deptSections = allSections.filter(s => s.department_id === selectedDepartmentId);
+      if (deptSections.length > 0 && !deptSections.find(s => s.id === selectedSectionId)) {
+        setSelectedSectionId(deptSections[0].id);
+      }
+    }
+  }, [selectedDepartmentId, allSections, selectedSectionId]);
+
+  const getCurrentDepartment = () => departments.find(d => d.id === selectedDepartmentId);
+  
+  const getSectionsForDepartment = (deptId: string) => 
+    allSections.filter(s => s.department_id === deptId);
+
   const handleDepartmentChange = (deptId: string) => {
-    setSelectedDepartment(deptId);
-    const dept = departments.find(d => d.id === deptId);
-    if (dept && dept.sections.length > 0) {
-      setSelectedSection(dept.sections[0]);
+    setSelectedDepartmentId(deptId);
+    const deptSections = allSections.filter(s => s.department_id === deptId);
+    if (deptSections.length > 0) {
+      setSelectedSectionId(deptSections[0].id);
     }
   };
 
@@ -53,13 +61,16 @@ export function DepartmentProvider({ children }: { children: ReactNode }) {
     <DepartmentContext.Provider
       value={{
         departments,
-        setDepartments,
-        selectedDepartment,
-        setSelectedDepartment: handleDepartmentChange,
-        selectedSection,
-        setSelectedSection,
+        sections: allSections,
+        selectedDepartmentId,
+        setSelectedDepartmentId: handleDepartmentChange,
+        selectedSectionId,
+        setSelectedSectionId,
+        selectedAcademicDay,
+        setSelectedAcademicDay,
         getCurrentDepartment,
         getSectionsForDepartment,
+        isLoading: depsLoading || secLoading,
       }}
     >
       {children}
