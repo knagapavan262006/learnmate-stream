@@ -14,7 +14,397 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      classrooms: {
+        Row: {
+          capacity: number
+          created_at: string
+          department_id: string
+          facilities: string[] | null
+          id: string
+          name: string
+          usage_percentage: number | null
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          department_id: string
+          facilities?: string[] | null
+          id?: string
+          name: string
+          usage_percentage?: number | null
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          department_id?: string
+          facilities?: string[] | null
+          id?: string
+          name?: string
+          usage_percentage?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classrooms_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      departments: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          department_id: string
+          id: string
+          message: string
+          recipient_type: string
+          section_id: string | null
+          status: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          department_id: string
+          id?: string
+          message: string
+          recipient_type: string
+          section_id?: string | null
+          status?: string
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          department_id?: string
+          id?: string
+          message?: string
+          recipient_type?: string
+          section_id?: string | null
+          status?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sections: {
+        Row: {
+          created_at: string
+          department_id: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          department_id: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          department_id?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sections_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      students: {
+        Row: {
+          attendance_percentage: number | null
+          created_at: string
+          department_id: string
+          email: string | null
+          id: string
+          name: string
+          roll_number: string
+          section_id: string
+        }
+        Insert: {
+          attendance_percentage?: number | null
+          created_at?: string
+          department_id: string
+          email?: string | null
+          id?: string
+          name: string
+          roll_number: string
+          section_id: string
+        }
+        Update: {
+          attendance_percentage?: number | null
+          created_at?: string
+          department_id?: string
+          email?: string | null
+          id?: string
+          name?: string
+          roll_number?: string
+          section_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_absences: {
+        Row: {
+          absent_date: string
+          created_at: string
+          department_id: string
+          id: string
+          is_handled: boolean | null
+          reason: string | null
+          substitute_teacher_id: string | null
+          teacher_id: string
+        }
+        Insert: {
+          absent_date: string
+          created_at?: string
+          department_id: string
+          id?: string
+          is_handled?: boolean | null
+          reason?: string | null
+          substitute_teacher_id?: string | null
+          teacher_id: string
+        }
+        Update: {
+          absent_date?: string
+          created_at?: string
+          department_id?: string
+          id?: string
+          is_handled?: boolean | null
+          reason?: string | null
+          substitute_teacher_id?: string | null
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_absences_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_absences_substitute_teacher_id_fkey"
+            columns: ["substitute_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_absences_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teachers: {
+        Row: {
+          absent_date: string | null
+          availability: string[] | null
+          created_at: string
+          department_id: string
+          email: string | null
+          id: string
+          is_absent: boolean | null
+          name: string
+          subject: string
+        }
+        Insert: {
+          absent_date?: string | null
+          availability?: string[] | null
+          created_at?: string
+          department_id: string
+          email?: string | null
+          id?: string
+          is_absent?: boolean | null
+          name: string
+          subject: string
+        }
+        Update: {
+          absent_date?: string | null
+          availability?: string[] | null
+          created_at?: string
+          department_id?: string
+          email?: string | null
+          id?: string
+          is_absent?: boolean | null
+          name?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teachers_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_slots: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          is_active: boolean | null
+          name: string
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          start_time?: string
+        }
+        Relationships: []
+      }
+      timetable_entries: {
+        Row: {
+          classroom_id: string | null
+          created_at: string
+          day: string
+          department_id: string
+          id: string
+          is_substituted: boolean | null
+          original_teacher_id: string | null
+          section_id: string
+          subject: string
+          teacher_id: string | null
+          time_slot: string
+        }
+        Insert: {
+          classroom_id?: string | null
+          created_at?: string
+          day: string
+          department_id: string
+          id?: string
+          is_substituted?: boolean | null
+          original_teacher_id?: string | null
+          section_id: string
+          subject: string
+          teacher_id?: string | null
+          time_slot: string
+        }
+        Update: {
+          classroom_id?: string | null
+          created_at?: string
+          day?: string
+          department_id?: string
+          id?: string
+          is_substituted?: boolean | null
+          original_teacher_id?: string | null
+          section_id?: string
+          subject?: string
+          teacher_id?: string | null
+          time_slot?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_entries_classroom_id_fkey"
+            columns: ["classroom_id"]
+            isOneToOne: false
+            referencedRelation: "classrooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_entries_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_entries_original_teacher_id_fkey"
+            columns: ["original_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_entries_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_entries_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
