@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Edit2, Trash2, Building, Users2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getSafeErrorMessage } from "@/lib/errorHandler";
 
 export function DepartmentsModule() {
   const { departments, sections, selectedDepartmentId, setSelectedDepartmentId, isLoading } = useDepartment();
@@ -73,8 +74,8 @@ export function DepartmentsModule() {
       setNewDept({ name: "", code: "", sections: "A, B" });
       setIsAddOpen(false);
       toast.success("Department added successfully");
-    } catch (error: any) {
-      toast.error("Failed to add department: " + error.message);
+    } catch (error) {
+      toast.error(getSafeErrorMessage(error));
     }
   };
 
@@ -88,8 +89,8 @@ export function DepartmentsModule() {
       queryClient.invalidateQueries({ queryKey: ["departments"] });
       setEditingDept(null);
       toast.success("Department updated successfully");
-    } catch (error: any) {
-      toast.error("Failed to update department: " + error.message);
+    } catch (error) {
+      toast.error(getSafeErrorMessage(error));
     }
   };
 
@@ -106,8 +107,8 @@ export function DepartmentsModule() {
         setSelectedDepartmentId(departments[0].id);
       }
       toast.success("Department deleted");
-    } catch (error: any) {
-      toast.error("Failed to delete department: " + error.message);
+    } catch (error) {
+      toast.error(getSafeErrorMessage(error));
     }
   };
 
@@ -127,8 +128,8 @@ export function DepartmentsModule() {
       setNewSection("");
       setAddingSectionTo(null);
       toast.success("Section added");
-    } catch (error: any) {
-      toast.error("Failed to add section: " + error.message);
+    } catch (error) {
+      toast.error(getSafeErrorMessage(error));
     }
   };
 
@@ -142,8 +143,8 @@ export function DepartmentsModule() {
       await supabase.from("sections").delete().eq("id", sectionId);
       queryClient.invalidateQueries({ queryKey: ["sections"] });
       toast.success("Section deleted");
-    } catch (error: any) {
-      toast.error("Failed to delete section: " + error.message);
+    } catch (error) {
+      toast.error(getSafeErrorMessage(error));
     }
   };
 

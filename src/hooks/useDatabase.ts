@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
+import { getSafeErrorMessage } from "@/lib/errorHandler";
 
 // Validation schemas
 const teacherSchema = z.object({
@@ -217,7 +218,7 @@ export function useUpdateTeacher() {
       toast.success("Teacher updated successfully");
     },
     onError: (error) => {
-      toast.error("Failed to update teacher: " + error.message);
+      toast.error(getSafeErrorMessage(error));
     },
   });
 }
@@ -234,7 +235,7 @@ export function useDeleteTeacher() {
       toast.success("Teacher removed");
     },
     onError: (error) => {
-      toast.error("Failed to remove teacher: " + error.message);
+      toast.error(getSafeErrorMessage(error));
     },
   });
 }
@@ -295,7 +296,7 @@ export function useUpdateStudent() {
       toast.success("Student updated successfully");
     },
     onError: (error) => {
-      toast.error("Failed to update student: " + error.message);
+      toast.error(getSafeErrorMessage(error));
     },
   });
 }
@@ -312,7 +313,7 @@ export function useDeleteStudent() {
       toast.success("Student removed");
     },
     onError: (error) => {
-      toast.error("Failed to remove student: " + error.message);
+      toast.error(getSafeErrorMessage(error));
     },
   });
 }
@@ -383,7 +384,7 @@ export function useUpdateTimeSlot() {
       queryClient.invalidateQueries({ queryKey: ["time_slots"] });
     },
     onError: (error) => {
-      toast.error("Failed to update time slot: " + error.message);
+      toast.error(getSafeErrorMessage(error));
     },
   });
 }
@@ -437,7 +438,7 @@ export function useSaveTimetable() {
       toast.success("Timetable saved to database");
     },
     onError: (error) => {
-      toast.error("Failed to save timetable: " + error.message);
+      toast.error(getSafeErrorMessage(error));
     },
   });
 }
@@ -558,7 +559,7 @@ export function useMarkTeacherAbsent() {
       toast.success("Teacher marked as absent");
     },
     onError: (error) => {
-      toast.error("Failed to mark teacher absent: " + error.message);
+      toast.error(getSafeErrorMessage(error));
     },
   });
 }
@@ -608,7 +609,7 @@ export function useHandleAbsence() {
       toast.success("Timetable auto-adjusted for teacher absence");
     },
     onError: (error) => {
-      toast.error("Failed to handle absence: " + error.message);
+      toast.error(getSafeErrorMessage(error));
     },
   });
 }
