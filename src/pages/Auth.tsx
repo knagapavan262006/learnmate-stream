@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,12 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { z } from "zod";
 import { GraduationCap, Loader2 } from "lucide-react";
+import { PasswordReset } from "@/components/auth/PasswordReset";
+import { UpdatePassword } from "@/components/auth/UpdatePassword";
 
 const emailSchema = z.string().trim().email({ message: "Invalid email address" }).max(255);
 const passwordSchema = z.string().min(6, { message: "Password must be at least 6 characters" }).max(72);
 
 export default function Auth() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { session, signIn, signUp, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
@@ -22,12 +25,15 @@ export default function Auth() {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
+  const [showResetForm, setShowResetForm] = useState(false);
+  
+  const isPasswordReset = searchParams.get("reset") === "true";
 
   useEffect(() => {
-    if (session) {
+    if (session && !isPasswordReset) {
       navigate("/");
     }
-  }, [session, navigate]);
+  }, [session, navigate, isPasswordReset]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,6 +106,33 @@ export default function Auth() {
     );
   }
 
+  // Show password update form if coming from reset link
+  if (isPasswordReset && session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
+        <UpdatePassword />
+      </div>
+    );
+  }
+
+  // Show password reset form
+  if (showResetForm) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
+        <div className="w-full max-w-md">
+          <PasswordReset />
+          <Button 
+            variant="ghost" 
+            className="w-full mt-4" 
+            onClick={() => setShowResetForm(false)}
+          >
+            Back to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
       <Card className="w-full max-w-md">
@@ -156,6 +189,14 @@ export default function Auth() {
                   ) : (
                     "Login"
                   )}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="link" 
+                  className="w-full text-sm" 
+                  onClick={() => setShowResetForm(true)}
+                >
+                  Forgot your password?
                 </Button>
               </form>
             </TabsContent>

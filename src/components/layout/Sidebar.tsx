@@ -10,30 +10,49 @@ import {
   Sparkles,
   Menu,
   X,
+  HelpCircle,
+  Layers,
+  Shield,
 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
 
-import { HelpCircle, Layers } from "lucide-react";
+type AppRole = "admin" | "teacher" | "student";
 
-const navItems = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "departments", label: "Departments", icon: Layers },
-  { id: "teachers", label: "Teachers", icon: Users },
-  { id: "students", label: "Students", icon: GraduationCap },
-  { id: "classrooms", label: "Classrooms", icon: Building2 },
-  { id: "timeslots", label: "Time Slots", icon: Clock },
-  { id: "timetable", label: "Timetable", icon: Calendar },
-  { id: "attendance", label: "Attendance", icon: BarChart3 },
-  { id: "demo", label: "Demo & Help", icon: HelpCircle },
+interface NavItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  roles: AppRole[];
+}
+
+const navItems: NavItem[] = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "teacher", "student"] },
+  { id: "departments", label: "Departments", icon: Layers, roles: ["admin"] },
+  { id: "teachers", label: "Teachers", icon: Users, roles: ["admin"] },
+  { id: "students", label: "Students", icon: GraduationCap, roles: ["admin", "teacher"] },
+  { id: "classrooms", label: "Classrooms", icon: Building2, roles: ["admin"] },
+  { id: "timeslots", label: "Time Slots", icon: Clock, roles: ["admin"] },
+  { id: "timetable", label: "Timetable", icon: Calendar, roles: ["admin", "teacher", "student"] },
+  { id: "attendance", label: "Attendance", icon: BarChart3, roles: ["admin", "teacher", "student"] },
+  { id: "roles", label: "Role Management", icon: Shield, roles: ["admin"] },
+  { id: "demo", label: "Demo & Help", icon: HelpCircle, roles: ["admin", "teacher", "student"] },
 ];
 
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { userRole } = useAuth();
+
+  // Filter nav items based on user role
+  const filteredNavItems = navItems.filter((item) => {
+    if (!userRole) return item.roles.includes("student"); // Default to student access
+    return item.roles.includes(userRole);
+  });
 
   return (
     <>
@@ -75,7 +94,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => (
+          {filteredNavItems.map((item) => (
             <button
               key={item.id}
               onClick={() => {
