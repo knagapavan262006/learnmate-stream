@@ -1,6 +1,7 @@
-import { Bell, Search, User, LogOut } from "lucide-react";
+import { Bell, Search, User, LogOut, Shield, GraduationCap, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -26,6 +27,32 @@ export function Header({ title, subtitle }: HeaderProps) {
     await signOut();
     toast.success("Logged out successfully");
     navigate("/auth");
+  };
+
+  const getRoleIcon = () => {
+    switch (userRole) {
+      case "admin":
+        return <Shield className="w-3 h-3" />;
+      case "teacher":
+        return <Users className="w-3 h-3" />;
+      case "student":
+        return <GraduationCap className="w-3 h-3" />;
+      default:
+        return <User className="w-3 h-3" />;
+    }
+  };
+
+  const getRoleBadgeVariant = () => {
+    switch (userRole) {
+      case "admin":
+        return "destructive";
+      case "teacher":
+        return "default";
+      case "student":
+        return "secondary";
+      default:
+        return "outline";
+    }
   };
 
   const displayRole = userRole 
@@ -58,7 +85,11 @@ export function Header({ title, subtitle }: HeaderProps) {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <div className="flex items-center gap-2 pl-3 border-l border-border cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="flex items-center gap-3 pl-3 border-l border-border cursor-pointer hover:opacity-80 transition-opacity">
+                <Badge variant={getRoleBadgeVariant() as "destructive" | "default" | "secondary" | "outline"} className="hidden sm:flex items-center gap-1">
+                  {getRoleIcon()}
+                  {displayRole}
+                </Badge>
                 <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center">
                   <User className="w-4 h-4 text-primary-foreground" />
                 </div>
@@ -66,15 +97,18 @@ export function Header({ title, subtitle }: HeaderProps) {
                   <p className="text-sm font-medium truncate max-w-[150px]">
                     {user?.email?.split("@")[0] || "User"}
                   </p>
-                  <p className="text-xs text-muted-foreground">{displayRole}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
               </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
-                <div className="flex flex-col space-y-1">
+                <div className="flex flex-col space-y-2">
                   <p className="text-sm font-medium">{user?.email}</p>
-                  <p className="text-xs text-muted-foreground">Role: {displayRole}</p>
+                  <Badge variant={getRoleBadgeVariant() as "destructive" | "default" | "secondary" | "outline"} className="w-fit flex items-center gap-1">
+                    {getRoleIcon()}
+                    {displayRole}
+                  </Badge>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
