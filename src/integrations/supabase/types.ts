@@ -14,6 +14,61 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance_records: {
+        Row: {
+          attendance_date: string
+          created_at: string
+          department_id: string
+          id: string
+          section_id: string
+          status: string
+          student_id: string
+          subject: string | null
+        }
+        Insert: {
+          attendance_date: string
+          created_at?: string
+          department_id: string
+          id?: string
+          section_id: string
+          status?: string
+          student_id: string
+          subject?: string | null
+        }
+        Update: {
+          attendance_date?: string
+          created_at?: string
+          department_id?: string
+          id?: string
+          section_id?: string
+          status?: string
+          student_id?: string
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classrooms: {
         Row: {
           capacity: number

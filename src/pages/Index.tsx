@@ -9,6 +9,7 @@ import { ClassroomsModule } from "@/components/classrooms/ClassroomsModule";
 import { TimeSlotsModule } from "@/components/timeslots/TimeSlotsModule";
 import { TimetableGenerator } from "@/components/timetable/TimetableGenerator";
 import { AttendanceModule } from "@/components/attendance/AttendanceModule";
+import { TakeAttendance } from "@/components/attendance/TakeAttendance";
 import { DepartmentsModule } from "@/components/departments/DepartmentsModule";
 import { DemoModule } from "@/components/demo/DemoModule";
 import { RoleManagementModule } from "@/components/admin/RoleManagementModule";
@@ -22,6 +23,7 @@ const pageConfig: Record<string, { title: string; subtitle: string }> = {
   classrooms: { title: "Classrooms", subtitle: "Department room management" },
   timeslots: { title: "Time Slots", subtitle: "Configure class periods" },
   timetable: { title: "Timetable Generator", subtitle: "AI-powered smart scheduling" },
+  takeattendance: { title: "Take Attendance", subtitle: "Mark student attendance" },
   attendance: { title: "Attendance Analytics", subtitle: "Section-wise attendance tracking" },
   examseating: { title: "Exam Seating Plan", subtitle: "Generate mixed-branch seating arrangements" },
   roles: { title: "Role Management", subtitle: "Manage user roles and permissions" },
@@ -40,6 +42,7 @@ const Index = () => {
       case "classrooms": return <ClassroomsModule />;
       case "timeslots": return <TimeSlotsModule />;
       case "timetable": return <TimetableGenerator />;
+      case "takeattendance": return <TakeAttendance />;
       case "attendance": return <AttendanceModule />;
       case "examseating": return <ExamSeatingModule />;
       case "roles": return <RoleManagementModule />;
