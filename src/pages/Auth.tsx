@@ -203,6 +203,11 @@ export default function Auth() {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
+                <div className="p-3 rounded-lg bg-muted/50 border border-border mb-2">
+                  <p className="text-xs text-muted-foreground text-center">
+                    <span className="font-medium text-foreground">Demo Mode:</span> Only admin-created users are allowed. Contact administrator for account access.
+                  </p>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <Input
