@@ -32,7 +32,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, Mail, Search, Edit2, UserX, CheckCircle, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Mail, Search, Edit2, UserX, CheckCircle, AlertTriangle, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 
 export function TeachersModule() {
@@ -45,6 +45,7 @@ export function TeachersModule() {
   const deleteTeacher = useDeleteTeacher();
   const markAbsent = useMarkTeacherAbsent();
   const sendNotification = useSendNotification();
+  const [isMarkingPresent, setIsMarkingPresent] = useState(false);
 
   const [search, setSearch] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -113,6 +114,33 @@ export function TeachersModule() {
 
     setAbsentDialog(null);
     setAbsentReason("");
+  };
+
+  const handleMarkPresent = async (teacher: DbTeacher) => {
+    setIsMarkingPresent(true);
+    try {
+      await updateTeacher.mutateAsync({
+        id: teacher.id,
+        is_absent: false,
+        absent_date: null,
+      });
+
+      // Send automatic notification
+      await sendNotification.mutateAsync({
+        department_id: selectedDepartmentId,
+        section_id: null,
+        type: "app",
+        title: "Teacher Available",
+        message: `${teacher.name} (${teacher.subject}) is now available and has resumed duties.`,
+        recipient_type: "all",
+      });
+
+      toast.success("Teacher marked as present and notification sent");
+    } catch (error) {
+      toast.error("Failed to mark teacher as present");
+    } finally {
+      setIsMarkingPresent(false);
+    }
   };
 
   if (isLoading) {
@@ -267,7 +295,18 @@ export function TeachersModule() {
                       >
                         <Edit2 className="w-4 h-4" />
                       </Button>
-                      {!teacher.is_absent && (
+                      {teacher.is_absent ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleMarkPresent(teacher)}
+                          className="text-success hover:bg-success/10"
+                          title="Mark Present"
+                          disabled={isMarkingPresent}
+                        >
+                          <UserCheck className="w-4 h-4" />
+                        </Button>
+                      ) : (
                         <Button
                           variant="ghost"
                           size="icon"

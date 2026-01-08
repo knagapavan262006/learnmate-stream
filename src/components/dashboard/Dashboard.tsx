@@ -3,6 +3,7 @@ import { StatCard } from "./StatCard";
 import { UtilizationChart } from "./UtilizationChart";
 import { TodaySchedule } from "./TodaySchedule";
 import { AlertsPanel } from "./AlertsPanel";
+import { NotificationLog } from "@/components/notifications/NotificationLog";
 import { useDepartment } from "@/contexts/DepartmentContext";
 import { useTeachers, useStudents, useClassrooms, useTimetableEntries } from "@/hooks/useDatabase";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -92,6 +93,9 @@ export function Dashboard() {
           <AlertsPanel />
         </div>
       </div>
+
+      {/* Notification Log */}
+      <NotificationLog />
 
       {/* Today's Schedule */}
       <TodaySchedule />
