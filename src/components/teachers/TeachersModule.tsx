@@ -369,6 +369,28 @@ export function TeachersModule() {
                   onChange={(e) => setEditingTeacher({ ...editingTeacher, email: e.target.value })}
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Availability (Days)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(day => (
+                    <label key={day} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={(editingTeacher.availability || []).includes(day)}
+                        onChange={(e) => {
+                          const current = editingTeacher.availability || [];
+                          const updated = e.target.checked
+                            ? [...current, day]
+                            : current.filter(d => d !== day);
+                          setEditingTeacher({ ...editingTeacher, availability: updated });
+                        }}
+                        className="rounded border-border"
+                      />
+                      {day.slice(0, 3)}
+                    </label>
+                  ))}
+                </div>
+              </div>
               <Button 
                 onClick={handleEditTeacher} 
                 className="w-full"

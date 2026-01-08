@@ -1,9 +1,10 @@
-import { Users, GraduationCap, Building2, Calendar, AlertTriangle, Bell } from "lucide-react";
+import { Users, GraduationCap, Building2, Calendar, AlertTriangle } from "lucide-react";
 import { StatCard } from "./StatCard";
 import { UtilizationChart } from "./UtilizationChart";
 import { TodaySchedule } from "./TodaySchedule";
 import { AlertsPanel } from "./AlertsPanel";
 import { NotificationLog } from "@/components/notifications/NotificationLog";
+import { CollegeBranding } from "./CollegeBranding";
 import { useDepartment } from "@/contexts/DepartmentContext";
 import { useTeachers, useStudents, useClassrooms, useTimetableEntries } from "@/hooks/useDatabase";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,6 +36,9 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* College Branding */}
+      <CollegeBranding />
+
       {/* Department Header */}
       <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
         <h2 className="text-lg font-semibold text-foreground">
