@@ -320,6 +320,15 @@ export function useDeleteStudent() {
   });
 }
 
+// Classroom validation schema
+const classroomSchema = z.object({
+  department_id: z.string().uuid({ message: "Invalid department ID" }),
+  name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
+  capacity: z.number().min(1, "Capacity must be at least 1").max(1000, "Capacity must be less than 1000"),
+  facilities: z.array(z.string()).nullable().optional(),
+  usage_percentage: z.number().min(0).max(100).nullable().optional(),
+});
+
 // Classrooms
 export function useClassrooms(departmentId?: string) {
   return useQuery({
@@ -332,6 +341,64 @@ export function useClassrooms(departmentId?: string) {
       const { data, error } = await query;
       if (error) throw error;
       return data as DbClassroom[];
+    },
+  });
+}
+
+export function useAddClassroom() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (classroom: Omit<DbClassroom, "id" | "created_at">) => {
+      classroomSchema.parse(classroom);
+      const { data, error } = await supabase.from("classrooms").insert(classroom).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["classrooms"] });
+      toast.success("Classroom added successfully");
+    },
+    onError: (error) => {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        toast.error(getSafeErrorMessage(error) || "Failed to add classroom");
+      }
+    },
+  });
+}
+
+export function useUpdateClassroom() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...classroom }: Partial<DbClassroom> & { id: string }) => {
+      const { data, error } = await supabase.from("classrooms").update(classroom).eq("id", id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["classrooms"] });
+      toast.success("Classroom updated successfully");
+    },
+    onError: (error) => {
+      toast.error(getSafeErrorMessage(error));
+    },
+  });
+}
+
+export function useDeleteClassroom() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("classrooms").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["classrooms"] });
+      toast.success("Classroom deleted");
+    },
+    onError: (error) => {
+      toast.error(getSafeErrorMessage(error));
     },
   });
 }
