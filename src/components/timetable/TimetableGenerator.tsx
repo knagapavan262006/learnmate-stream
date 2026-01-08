@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkles, RefreshCw, UserX, ArrowRight, FileText, CheckCircle2 } from "lucide-react";
+import { Sparkles, RefreshCw, UserX, ArrowRight, FileText, CheckCircle2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import jsPDF from "jspdf";
@@ -16,7 +16,7 @@ import autoTable from "jspdf-autotable";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-interface TimetableEntry { id: string; day: string; timeSlot: string; subject: string; teacherId: string; teacherName: string; classroomId: string; classroomName: string; }
+interface TimetableEntry { id: string; day: string; timeSlot: string; subject: string; teacherId: string; teacherName: string; classroomId: string; classroomName: string; isSubstituted?: boolean; originalTeacher?: string; }
 
 export function TimetableGenerator() {
   const { selectedDepartmentId, selectedSectionId, getCurrentDepartment, getSectionsForDepartment } = useDepartment();
@@ -85,11 +85,19 @@ export function TimetableGenerator() {
   const handleSubstitution = async () => {
     if (!absentTeacher || !substituteTeacher) return;
     const sub = teachers.find(t => t.id === substituteTeacher)!;
+    const absent = teachers.find(t => t.id === absentTeacher)!;
     const count = timetable.filter(t => t.teacherId === absentTeacher).length;
-    setTimetable(timetable.map(e => e.teacherId === absentTeacher ? { ...e, teacherId: substituteTeacher, teacherName: sub.name, subject: sub.subject } : e));
+    setTimetable(timetable.map(e => e.teacherId === absentTeacher ? { 
+      ...e, 
+      teacherId: substituteTeacher, 
+      teacherName: sub.name, 
+      subject: sub.subject,
+      isSubstituted: true,
+      originalTeacher: absent.name
+    } : e));
     setSubstitutionDialog(false); setAbsentTeacher(""); setSubstituteTeacher("");
     toast.success(`Substituted ${count} classes`);
-    await sendNotification.mutateAsync({ department_id: selectedDepartmentId, section_id: selectedSectionId, type: "app", title: "Timetable Updated", message: `${count} classes reassigned to ${sub.name} due to teacher absence`, recipient_type: "all" });
+    await sendNotification.mutateAsync({ department_id: selectedDepartmentId, section_id: selectedSectionId, type: "app", title: "Timetable Updated - Teacher Substitution", message: `${count} classes reassigned from ${absent.name} to ${sub.name} due to teacher absence`, recipient_type: "all" });
   };
 
   const exportPDF = () => {
@@ -99,11 +107,33 @@ export function TimetableGenerator() {
     const head = ["Time", ...selectedDays];
     const body = activeSlots.map(slot => {
       const ts = `${slot.start_time}-${slot.end_time}`;
-      return [ts, ...selectedDays.map(day => { const e = timetable.find(x => x.day === day && x.timeSlot === ts); return e ? `${e.subject}\n${e.teacherName}` : "-"; })];
+      return [ts, ...selectedDays.map(day => { const e = timetable.find(x => x.day === day && x.timeSlot === ts); return e ? `${e.subject}\n${e.teacherName}${e.isSubstituted ? ' (Sub)' : ''}` : "-"; })];
     });
     autoTable(doc, { head: [head], body, startY: 30, theme: "grid", headStyles: { fillColor: [79, 70, 229] } });
     doc.save(`timetable-${currentDept?.code}-${currentSection?.name}.pdf`);
     toast.success("PDF exported!");
+  };
+
+  const exportCSV = () => {
+    if (!timetable.length) { toast.error("No timetable to export"); return; }
+    const headers = ["Department", "Section", "Day", "Time Slot", "Subject", "Teacher", "Classroom", "Adjustment Note"];
+    const rows = timetable.map(e => [
+      currentDept?.name || "",
+      currentSection?.name || "",
+      e.day,
+      e.timeSlot,
+      e.subject,
+      e.teacherName,
+      e.classroomName,
+      e.isSubstituted ? `Substituted from ${e.originalTeacher || "original teacher"}` : ""
+    ]);
+    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `timetable-${currentDept?.code}-${currentSection?.name}.csv`;
+    link.click();
+    toast.success("CSV exported successfully!");
   };
 
   if (tLoad || cLoad || tsLoad) return <Skeleton className="h-96 w-full" />;
@@ -145,7 +175,7 @@ export function TimetableGenerator() {
       </div>
       <div className="flex items-center gap-4 flex-wrap">
         <Button onClick={generate} disabled={isGenerating} size="lg">{isGenerating ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}{isGenerating ? "Generating..." : "Generate Timetable"}</Button>
-        {timetable.length > 0 && (<><span className="text-success flex items-center gap-1"><CheckCircle2 className="w-4 h-4" />{timetable.length} classes</span><Button variant="outline" onClick={() => setSubstitutionDialog(true)}><UserX className="w-4 h-4 mr-2" />Substitution</Button><Button variant="outline" onClick={exportPDF}><FileText className="w-4 h-4 mr-2" />Export PDF</Button></>)}
+        {timetable.length > 0 && (<><span className="text-success flex items-center gap-1"><CheckCircle2 className="w-4 h-4" />{timetable.length} classes</span><Button variant="outline" onClick={() => setSubstitutionDialog(true)}><UserX className="w-4 h-4 mr-2" />Substitution</Button><Button variant="outline" onClick={exportPDF}><FileText className="w-4 h-4 mr-2" />Export PDF</Button><Button variant="outline" onClick={exportCSV}><Download className="w-4 h-4 mr-2" />Export CSV</Button></>)}
       </div>
       {timetable.length > 0 && (
         <div className="bg-card rounded-xl border overflow-hidden">
