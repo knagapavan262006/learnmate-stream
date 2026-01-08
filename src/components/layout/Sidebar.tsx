@@ -14,6 +14,7 @@ import {
   Layers,
   Shield,
   FileSpreadsheet,
+  ClipboardCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,7 +41,8 @@ const navItems: NavItem[] = [
   { id: "classrooms", label: "Classrooms", icon: Building2, roles: ["admin"] },
   { id: "timeslots", label: "Time Slots", icon: Clock, roles: ["admin"] },
   { id: "timetable", label: "Timetable", icon: Calendar, roles: ["admin", "teacher", "student"] },
-  { id: "attendance", label: "Attendance", icon: BarChart3, roles: ["admin", "teacher", "student"] },
+  { id: "takeattendance", label: "Take Attendance", icon: ClipboardCheck, roles: ["admin", "teacher"] },
+  { id: "attendance", label: "Attendance Analytics", icon: BarChart3, roles: ["admin", "teacher", "student"] },
   { id: "examseating", label: "Exam Seating", icon: FileSpreadsheet, roles: ["admin"] },
   { id: "roles", label: "Role Management", icon: Shield, roles: ["admin"] },
   { id: "demo", label: "Demo & Help", icon: HelpCircle, roles: ["admin", "teacher", "student"] },
