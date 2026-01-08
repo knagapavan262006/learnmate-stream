@@ -12,6 +12,7 @@ import { AttendanceModule } from "@/components/attendance/AttendanceModule";
 import { DepartmentsModule } from "@/components/departments/DepartmentsModule";
 import { DemoModule } from "@/components/demo/DemoModule";
 import { RoleManagementModule } from "@/components/admin/RoleManagementModule";
+import { ExamSeatingModule } from "@/components/examseating/ExamSeatingModule";
 
 const pageConfig: Record<string, { title: string; subtitle: string }> = {
   dashboard: { title: "Dashboard", subtitle: "Department-wise overview" },
@@ -22,6 +23,7 @@ const pageConfig: Record<string, { title: string; subtitle: string }> = {
   timeslots: { title: "Time Slots", subtitle: "Configure class periods" },
   timetable: { title: "Timetable Generator", subtitle: "AI-powered smart scheduling" },
   attendance: { title: "Attendance Analytics", subtitle: "Section-wise attendance tracking" },
+  examseating: { title: "Exam Seating Plan", subtitle: "Generate mixed-branch seating arrangements" },
   roles: { title: "Role Management", subtitle: "Manage user roles and permissions" },
   demo: { title: "Demo & Help", subtitle: "System guide for presentations" },
 };
@@ -39,6 +41,7 @@ const Index = () => {
       case "timeslots": return <TimeSlotsModule />;
       case "timetable": return <TimetableGenerator />;
       case "attendance": return <AttendanceModule />;
+      case "examseating": return <ExamSeatingModule />;
       case "roles": return <RoleManagementModule />;
       case "demo": return <DemoModule />;
       default: return <Dashboard />;

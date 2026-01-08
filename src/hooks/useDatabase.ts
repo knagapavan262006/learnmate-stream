@@ -199,7 +199,8 @@ export function useAddTeacher() {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
       } else {
-        toast.error("Failed to add teacher");
+        console.error("Add teacher error:", error);
+        toast.error(getSafeErrorMessage(error) || "Failed to add teacher. Check your permissions.");
       }
     },
   });
@@ -277,7 +278,8 @@ export function useAddStudent() {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
       } else {
-        toast.error("Failed to add student");
+        console.error("Add student error:", error);
+        toast.error(getSafeErrorMessage(error) || "Failed to add student. Check your permissions.");
       }
     },
   });
@@ -361,12 +363,14 @@ export function useAddTimeSlot() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["time_slots"] });
+      toast.success("Time slot added successfully");
     },
     onError: (error) => {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
       } else {
-        toast.error("Failed to add time slot");
+        console.error("Add time slot error:", error);
+        toast.error(getSafeErrorMessage(error) || "Failed to add time slot. Check your permissions.");
       }
     },
   });
